@@ -16,9 +16,13 @@ html{scroll-behavior:smooth;overflow-x:hidden}
   --dim:#9e9585;
   --line:rgba(212,168,67,.15);
 }
-#cursor{position:fixed;width:8px;height:8px;border-radius:50%;background:var(--gold);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:difference}
-#cursor-ring{position:fixed;width:36px;height:36px;border-radius:50%;border:1px solid rgba(212,168,67,.4);pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s;will-change:transform}
-body:has(button:hover) #cursor-ring{width:52px;height:52px;border-color:rgba(212,168,67,.8)}
+/* Cursor — solo desktop con mouse */
+@media(hover:hover) and (pointer:fine){
+  #cursor{position:fixed;width:8px;height:8px;border-radius:50%;background:var(--gold);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:difference}
+  #cursor-ring{position:fixed;width:36px;height:36px;border-radius:50%;border:1px solid rgba(212,168,67,.4);pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s;will-change:transform}
+  body:has(button:hover) #cursor-ring{width:52px;height:52px;border-color:rgba(212,168,67,.8)}
+}
+@media(hover:none),(pointer:coarse){#cursor,#cursor-ring{display:none!important;width:0;height:0}}
 #bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
 nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:28px 64px;background:linear-gradient(to bottom,rgba(14,15,26,.95) 0%,transparent 100%)}
 .logo{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;letter-spacing:4px;color:var(--text)}
@@ -68,7 +72,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .how-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;margin-bottom:6px;color:var(--text)}
 .how-title-en{font-family:'Tenor Sans',sans-serif;font-size:12px;letter-spacing:1px;color:var(--dim);margin-bottom:18px;font-style:italic}
 .how-text{font-family:'Tenor Sans',sans-serif;font-size:14px;line-height:1.85;color:var(--dim)}
-#wizard-overlay{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;flex-direction:column;opacity:0;transition:opacity .5s}
+#wizard-overlay{position:fixed;inset:0;z-index:500;background:var(--bg);display:none;flex-direction:column;opacity:0;transition:opacity .5s;-webkit-overflow-scrolling:touch}
 #wizard-overlay.open{display:flex;opacity:1}
 #wiz-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .wiz-header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:28px 64px;border-bottom:1px solid var(--line);flex-shrink:0}
@@ -118,7 +122,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3)}
 .btn-back-wiz:not(:disabled):hover{color:var(--text)}
 .btn-next-wiz{background:var(--gold);color:var(--bg);border:none;font-family:'Tenor Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:16px 40px;cursor:pointer;transition:all .3s}
 .btn-next-wiz:hover{background:#e8c053;transform:translateY(-2px)}
-#result-screen{position:fixed;inset:0;z-index:300;display:none;flex-direction:column;background:var(--bg);overflow-y:auto}
+#result-screen{position:fixed;inset:0;z-index:510;display:none;flex-direction:column;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
 #result-screen.show{display:flex}
 #result-canvas{position:fixed;inset:0;pointer-events:none;z-index:0}
 .res-inner{position:relative;z-index:1;max-width:900px;margin:0 auto;width:100%;padding:80px 64px 100px;display:flex;flex-direction:column;min-height:100vh}
@@ -536,10 +540,14 @@ footer{position:relative;z-index:1;padding:48px 64px;border-top:1px solid var(--
 <div class="gold-line"></div>
 <footer><div class="foot-logo">PRIME<span>MOVE</span></div><div class="foot-tag">Marbella Property Intelligence</div><div class="foot-copy">&copy; 2025 PrimeMove</div></footer>
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
-let mx=0,my=0,rx=0,ry=0;
-document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'});
-(function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=Math.round(rx)+'px';ring.style.top=Math.round(ry)+'px';requestAnimationFrame(loop)})();
+// Cursor solo en dispositivos con mouse real
+const isTouchDevice = window.matchMedia('(hover:none),(pointer:coarse)').matches;
+if(!isTouchDevice){
+  const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'});
+  (function loop(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=Math.round(rx)+'px';ring.style.top=Math.round(ry)+'px';requestAnimationFrame(loop)})();
+}
 function initParticles(id,n){
   const c=document.getElementById(id);if(!c)return;
   const ctx=c.getContext('2d');
@@ -562,8 +570,31 @@ document.querySelectorAll('.opt').forEach(btn=>{
 })();
 let step=0,TOTAL=7,wd={metros:200,extras:[]},nameOk=false,telOk=false,emailOk=false,startTime=Date.now();
 const singlePick=[0,1,3,5];
-function openWizard(){const ov=document.getElementById('wizard-overlay');ov.style.display='flex';setTimeout(()=>ov.style.opacity='1',10);document.body.style.overflow='hidden';initParticles('wiz-canvas',25);startTime=Date.now();updateUI()}
-function closeWizard(){const ov=document.getElementById('wizard-overlay');ov.style.opacity='0';setTimeout(()=>{ov.style.display='none';document.body.style.overflow=''},500)}
+function openWizard(){
+  const ov=document.getElementById('wizard-overlay');
+  ov.style.display='flex';
+  setTimeout(()=>ov.style.opacity='1',10);
+  // iOS-safe scroll lock
+  document.body.style.overflow='hidden';
+  document.body.style.position='fixed';
+  document.body.style.width='100%';
+  document.body.dataset.scrollY=window.scrollY;
+  initParticles('wiz-canvas',25);
+  startTime=Date.now();
+  updateUI();
+}
+function closeWizard(){
+  const ov=document.getElementById('wizard-overlay');
+  ov.style.opacity='0';
+  setTimeout(()=>{
+    ov.style.display='none';
+    const scrollY=document.body.dataset.scrollY||0;
+    document.body.style.overflow='';
+    document.body.style.position='';
+    document.body.style.width='';
+    window.scrollTo(0,parseInt(scrollY));
+  },500);
+}
 function goTo(s){
   const blocks=document.querySelectorAll('.q-block');
   const c=blocks[step],n=blocks[s];
@@ -643,6 +674,8 @@ function showResult(){
   document.getElementById('score-tags').innerHTML=sc.reasons.map(r=>'<span class="stag'+(r.h?' hl':'')+'">'+ r.t+'</span>').join('');
   document.getElementById('result-screen').classList.add('show');
   document.body.style.overflow='hidden';
+  document.body.style.position='fixed';
+  document.body.style.width='100%';
   initParticles('result-canvas',30);
   setTimeout(()=>{countUp(document.getElementById('p-low'),val.low,1800);setTimeout(()=>countUp(document.getElementById('p-high'),val.high,1800),400);document.getElementById('price-fill').style.width='74%'},200);
   document.getElementById('ins-sqm').textContent='€'+Math.round(val.low/val.sqm).toLocaleString()+'/m²';
@@ -673,7 +706,7 @@ function triggerEmail(val,sc){
   document.getElementById('email-popup-overlay').classList.add('show');
 }
 function closeEmailIfOutside(e){if(e.target===document.getElementById('email-popup-overlay'))document.getElementById('email-popup-overlay').classList.remove('show')}
-function closeResult(){document.getElementById('result-screen').classList.remove('show');document.getElementById('email-popup-overlay').classList.remove('show');document.body.style.overflow='';document.getElementById('p-low').innerHTML='&mdash;';document.getElementById('p-high').innerHTML='&mdash;';document.getElementById('price-fill').style.width='0%';resetAll()}
+function closeResult(){document.getElementById('result-screen').classList.remove('show');document.getElementById('email-popup-overlay').classList.remove('show');document.body.style.overflow='';document.body.style.position='';document.body.style.width='';document.getElementById('p-low').innerHTML='&mdash;';document.getElementById('p-high').innerHTML='&mdash;';document.getElementById('price-fill').style.width='0%';resetAll()}
 function resetAll(){
   wd={metros:200,extras:[]};nameOk=false;telOk=false;emailOk=false;startTime=Date.now();step=0;
   document.querySelectorAll('.q-block').forEach((b,i)=>{b.classList.remove('active','exit');b.style.transform='';b.style.opacity='';if(i===0)b.classList.add('active')});
