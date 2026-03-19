@@ -83,21 +83,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .wiz-progress-bar{position:relative;z-index:2;height:2px;background:rgba(212,168,67,.1);flex-shrink:0}
 .wiz-progress-fill{height:100%;background:linear-gradient(90deg,var(--dim),var(--gold),#e8c053);width:0%;transition:width .6s cubic-bezier(.25,1,.5,1)}
 .wiz-step-count{position:relative;z-index:2;padding:18px 64px;font-family:'Tenor Sans',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);flex-shrink:0}
-.wiz-stage{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;padding:40px 64px;overflow:hidden}
-.q-block{
-  display:flex;flex-direction:column;align-items:flex-start;
-  width:100%;max-width:860px;
-  position:absolute;top:0;left:0;right:0;
-  opacity:0;pointer-events:none;
-  transform:translateX(60px);
-  transition:transform .42s cubic-bezier(.4,0,.2,1),opacity .42s cubic-bezier(.4,0,.2,1);
-  will-change:transform,opacity;
-}
-.q-block.active{
-  opacity:1;pointer-events:all;
-  transform:translateX(0);
-  position:relative;
-}
+.wiz-stage{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;padding:40px 64px}
+.q-block{display:none;width:100%;max-width:860px;flex-direction:column;align-items:flex-start}
+.q-block.active{display:flex}
+.q-block.entering{animation:slideIn .38s cubic-bezier(.4,0,.2,1) forwards}
+.q-block.leaving{animation:slideOut .32s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes slideIn{from{opacity:0;transform:translateX(50px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-50px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(-50px)}}
+@keyframes slideOutRight{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(50px)}}
 .q-label{font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
 .q-text{font-family:'Cormorant Garamond',serif;font-size:clamp(28px,4vw,52px);font-weight:300;line-height:1.2;margin-bottom:8px;color:var(--text)}
 .q-text-en{font-family:'Tenor Sans',sans-serif;font-size:14px;color:var(--dim);font-style:italic;margin-bottom:48px;opacity:.7}
@@ -582,30 +576,21 @@ document.querySelectorAll('.opt').forEach(btn=>{
 let step=0,TOTAL=7,wd={metros:200,extras:[]},nameOk=false,telOk=false,emailOk=false,startTime=Date.now();
 const singlePick=[0,1,3,5];
 function openWizard(){
-  const ov=document.getElementById('wizard-overlay');
-  ov.style.display='flex';
-  ov.style.opacity='0';
-  // Force reflow before transition
+  const ov = document.getElementById('wizard-overlay');
+  ov.style.display = 'flex';
   ov.getBoundingClientRect();
-  ov.style.opacity='1';
-  // Simple scroll lock — no body position:fixed (breaks iOS)
-  document.documentElement.style.overflow='hidden';
-  document.body.style.overflow='hidden';
-  initParticles('wiz-canvas',25);
-  startTime=Date.now();
-  // Asegurar primer bloque visible sin transicion
-  document.querySelectorAll('.q-block').forEach((b, i) => {
+  ov.style.opacity = '1';
+  document.documentElement.style.overflow = 'hidden';
+  document.body.style.overflow = 'hidden';
+  initParticles('wiz-canvas', 25);
+  startTime = Date.now();
+  // Reset: ocultar todos, mostrar solo el primero
+  document.querySelectorAll('.q-block').forEach(b => {
     b.classList.remove('active');
-    b.style.cssText = '';
+    b.style.animation = '';
   });
-  const first = document.getElementById('qb0');
-  if(first){
-    first.style.transition = 'none';
-    first.classList.add('active');
-    first.style.transform  = 'translateX(0)';
-    first.style.opacity    = '1';
-    first.style.pointerEvents = 'all';
-  }
+  document.getElementById('qb0').classList.add('active');
+  step = 0;
   updateUI();
 }
 function closeWizard(){
@@ -621,32 +606,26 @@ function goTo(s){
   const blocks = document.querySelectorAll('.q-block');
   const curr = blocks[step];
   const next = blocks[s];
-  const dir  = s > step ? 1 : -1;
+  const goingForward = s > step;
 
-  // Sacar el actual hacia la izquierda/derecha
-  curr.style.transition = 'transform .42s cubic-bezier(.4,0,.2,1), opacity .42s cubic-bezier(.4,0,.2,1)';
-  curr.style.transform  = 'translateX(' + (-dir * 60) + 'px)';
-  curr.style.opacity    = '0';
-  curr.style.pointerEvents = 'none';
+  // Animar salida del actual
+  curr.style.animation = goingForward
+    ? 'slideOut .32s cubic-bezier(.4,0,.2,1) forwards'
+    : 'slideOutRight .32s cubic-bezier(.4,0,.2,1) forwards';
 
-  // Colocar el siguiente en el lado correcto sin transición
-  next.style.transition = 'none';
-  next.style.transform  = 'translateX(' + (dir * 60) + 'px)';
-  next.style.opacity    = '0';
-  next.getBoundingClientRect(); // flush
-
-  // Activar y animar entrada
-  next.classList.add('active');
-  next.style.transition = 'transform .42s cubic-bezier(.4,0,.2,1), opacity .42s cubic-bezier(.4,0,.2,1)';
-  next.style.transform  = 'translateX(0)';
-  next.style.opacity    = '1';
-  next.style.pointerEvents = 'all';
-
-  // Limpiar el anterior cuando termine
   setTimeout(() => {
+    // Ocultar actual
     curr.classList.remove('active');
-    curr.style.cssText = '';
-  }, 450);
+    curr.style.animation = '';
+
+    // Mostrar y animar entrada del siguiente
+    next.classList.add('active');
+    next.style.animation = goingForward
+      ? 'slideIn .38s cubic-bezier(.4,0,.2,1) forwards'
+      : 'slideInLeft .38s cubic-bezier(.4,0,.2,1) forwards';
+
+    setTimeout(() => { next.style.animation = ''; }, 400);
+  }, 320);
 
   step = s;
   updateUI();
@@ -744,13 +723,23 @@ function triggerEmail(val,sc){
 function closeEmailIfOutside(e){if(e.target===document.getElementById('email-popup-overlay'))document.getElementById('email-popup-overlay').classList.remove('show')}
 function closeResult(){document.getElementById('result-screen').classList.remove('show');document.getElementById('email-popup-overlay').classList.remove('show');document.documentElement.style.overflow='';document.body.style.overflow='';document.getElementById('p-low').innerHTML='&mdash;';document.getElementById('p-high').innerHTML='&mdash;';document.getElementById('price-fill').style.width='0%';resetAll()}
 function resetAll(){
-  wd={metros:200,extras:[]};nameOk=false;telOk=false;emailOk=false;startTime=Date.now();step=0;
-  document.querySelectorAll('.q-block').forEach((b,i)=>{b.classList.remove('active','exit');b.style.transform='';b.style.opacity='';if(i===0)b.classList.add('active')});
-  document.querySelectorAll('.opt').forEach(b=>b.classList.remove('sel'));
-  document.getElementById('sqm-display').textContent='200';
-  document.querySelector('#qb2 input[type=range]').value=200;
-  ['f-name','f-tel','f-email'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.style.borderColor=''}});
-  ['e-name','e-tel','e-email'].forEach(id=>document.getElementById(id).classList.remove('show'));
+  wd = {metros:200, extras:[]};
+  nameOk = false; telOk = false; emailOk = false;
+  startTime = Date.now();
+  step = 0;
+  document.querySelectorAll('.q-block').forEach(b => {
+    b.classList.remove('active');
+    b.style.animation = '';
+  });
+  document.getElementById('qb0').classList.add('active');
+  document.querySelectorAll('.opt').forEach(b => b.classList.remove('sel'));
+  document.getElementById('sqm-display').textContent = '200';
+  document.querySelector('#qb2 input[type=range]').value = 200;
+  ['f-name','f-tel','f-email'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.value = ''; el.style.borderColor = ''; }
+  });
+  ['e-name','e-tel','e-email'].forEach(id => document.getElementById(id).classList.remove('show'));
   document.getElementById('spam-block').classList.remove('show');
   updateUI();
 }
