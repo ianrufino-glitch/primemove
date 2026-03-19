@@ -616,6 +616,11 @@ async function sendEmail(data, sc, val){
         estado:      data.estado||'—',
         urgencia:    data.urgencia||'—',
         precio:      fmtE(val.low)+' – '+fmtE(val.high),
+        // Variables requeridas por la plantilla Contact Us de EmailJS
+        name:        data.nombre||'Propietario',
+        message:     scoreLabel[sc.lv]+' — '+( data.zona||'Marbella')+' — '+(data.tipo||'Propiedad')+' — '+fmtE(val.low)+' a '+fmtE(val.high),
+        reply_to:    data.email||AGENT_EMAIL,
+        from_name:   'PrimeMove',
       }
     );
     return r.status === 200;
