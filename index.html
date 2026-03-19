@@ -83,10 +83,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .wiz-progress-bar{position:relative;z-index:2;height:2px;background:rgba(212,168,67,.1);flex-shrink:0}
 .wiz-progress-fill{height:100%;background:linear-gradient(90deg,var(--dim),var(--gold),#e8c053);width:0%;transition:width .6s cubic-bezier(.25,1,.5,1)}
 .wiz-step-count{position:relative;z-index:2;padding:18px 64px;font-family:'Tenor Sans',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);flex-shrink:0}
-.wiz-stage{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;padding:40px 64px;overflow:hidden}
-.q-block{position:absolute;width:100%;max-width:860px;display:flex;flex-direction:column;align-items:flex-start;transform:translateX(100px);opacity:0;transition:transform .55s cubic-bezier(.25,1,.5,1),opacity .55s;pointer-events:none}
-.q-block.active{transform:translateX(0);opacity:1;pointer-events:all;position:relative}
-.q-block.exit{transform:translateX(-100px);opacity:0;pointer-events:none}
+.wiz-stage{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;padding:40px 64px}
+.q-block{display:none;width:100%;max-width:860px;flex-direction:column;align-items:flex-start;opacity:0;pointer-events:none}
+.q-block.active{display:flex;position:relative;pointer-events:all}
 .q-label{font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
 .q-text{font-family:'Cormorant Garamond',serif;font-size:clamp(28px,4vw,52px);font-weight:300;line-height:1.2;margin-bottom:8px;color:var(--text)}
 .q-text-en{font-family:'Tenor Sans',sans-serif;font-size:14px;color:var(--dim);font-style:italic;margin-bottom:48px;opacity:.7}
@@ -573,14 +572,23 @@ const singlePick=[0,1,3,5];
 function openWizard(){
   const ov=document.getElementById('wizard-overlay');
   ov.style.display='flex';
-  setTimeout(()=>ov.style.opacity='1',10);
-  // iOS-safe scroll lock
+  ov.style.opacity='0';
+  // Force reflow before transition
+  ov.getBoundingClientRect();
+  ov.style.opacity='1';
+  // Simple scroll lock — no body position:fixed (breaks iOS)
+  document.documentElement.style.overflow='hidden';
   document.body.style.overflow='hidden';
-  document.body.style.position='fixed';
-  document.body.style.width='100%';
-  document.body.dataset.scrollY=window.scrollY;
   initParticles('wiz-canvas',25);
   startTime=Date.now();
+  // Reset first question to visible immediately
+  const first=document.getElementById('qb0');
+  if(first){
+    first.classList.add('active');
+    first.style.transform='translateX(0)';
+    first.style.opacity='1';
+    first.style.position='relative';
+  }
   updateUI();
 }
 function closeWizard(){
@@ -588,30 +596,37 @@ function closeWizard(){
   ov.style.opacity='0';
   setTimeout(()=>{
     ov.style.display='none';
-    const scrollY=document.body.dataset.scrollY||0;
+    document.documentElement.style.overflow='';
     document.body.style.overflow='';
-    document.body.style.position='';
-    document.body.style.width='';
-    window.scrollTo(0,parseInt(scrollY));
   },500);
 }
 function goTo(s){
   const blocks=document.querySelectorAll('.q-block');
   const c=blocks[step],n=blocks[s];
-  c.classList.remove('active');c.classList.add('exit');
-  setTimeout(()=>c.classList.remove('exit'),550);
-  // Inline styles para posicion inicial
-  n.style.transform=s>step?'translateX(100px)':'translateX(-100px)';
+  // Salida del bloque actual
+  c.style.transition='transform .35s ease,opacity .35s ease';
+  c.style.transform=s>step?'translateX(-60px)':'translateX(60px)';
+  c.style.opacity='0';
+  c.style.pointerEvents='none';
+  // Mostrar siguiente y preparar posicion inicial
+  n.classList.add('active');
+  n.style.transition='none';
+  n.style.transform=s>step?'translateX(60px)':'translateX(-60px)';
   n.style.opacity='0';
-  n.style.transition='none'; // sin transicion al colocar
-  n.getBoundingClientRect(); // fuerza reflow
-  // Limpia inline para que el CSS .q-block.active tome el control
+  n.style.pointerEvents='none';
+  n.getBoundingClientRect();
+  // Animar entrada
   setTimeout(()=>{
-    n.style.transition='';
-    n.classList.add('active');
-    n.style.transform='';
-    n.style.opacity='';
-  },30);
+    n.style.transition='transform .35s ease,opacity .35s ease';
+    n.style.transform='translateX(0)';
+    n.style.opacity='1';
+    n.style.pointerEvents='all';
+  },20);
+  // Limpiar anterior una vez animado
+  setTimeout(()=>{
+    c.classList.remove('active','exit');
+    c.style.cssText='';
+  },400);
   step=s;updateUI();
 }
 function updateUI(){
@@ -673,9 +688,8 @@ function showResult(){
   document.getElementById('score-pill-text').textContent=sc.lb;
   document.getElementById('score-tags').innerHTML=sc.reasons.map(r=>'<span class="stag'+(r.h?' hl':'')+'">'+ r.t+'</span>').join('');
   document.getElementById('result-screen').classList.add('show');
+  document.documentElement.style.overflow='hidden';
   document.body.style.overflow='hidden';
-  document.body.style.position='fixed';
-  document.body.style.width='100%';
   initParticles('result-canvas',30);
   setTimeout(()=>{countUp(document.getElementById('p-low'),val.low,1800);setTimeout(()=>countUp(document.getElementById('p-high'),val.high,1800),400);document.getElementById('price-fill').style.width='74%'},200);
   document.getElementById('ins-sqm').textContent='€'+Math.round(val.low/val.sqm).toLocaleString()+'/m²';
@@ -706,7 +720,7 @@ function triggerEmail(val,sc){
   document.getElementById('email-popup-overlay').classList.add('show');
 }
 function closeEmailIfOutside(e){if(e.target===document.getElementById('email-popup-overlay'))document.getElementById('email-popup-overlay').classList.remove('show')}
-function closeResult(){document.getElementById('result-screen').classList.remove('show');document.getElementById('email-popup-overlay').classList.remove('show');document.body.style.overflow='';document.body.style.position='';document.body.style.width='';document.getElementById('p-low').innerHTML='&mdash;';document.getElementById('p-high').innerHTML='&mdash;';document.getElementById('price-fill').style.width='0%';resetAll()}
+function closeResult(){document.getElementById('result-screen').classList.remove('show');document.getElementById('email-popup-overlay').classList.remove('show');document.documentElement.style.overflow='';document.body.style.overflow='';document.getElementById('p-low').innerHTML='&mdash;';document.getElementById('p-high').innerHTML='&mdash;';document.getElementById('price-fill').style.width='0%';resetAll()}
 function resetAll(){
   wd={metros:200,extras:[]};nameOk=false;telOk=false;emailOk=false;startTime=Date.now();step=0;
   document.querySelectorAll('.q-block').forEach((b,i)=>{b.classList.remove('active','exit');b.style.transform='';b.style.opacity='';if(i===0)b.classList.add('active')});
