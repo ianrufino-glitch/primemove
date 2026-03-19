@@ -83,9 +83,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .wiz-progress-bar{position:relative;z-index:2;height:2px;background:rgba(212,168,67,.1);flex-shrink:0}
 .wiz-progress-fill{height:100%;background:linear-gradient(90deg,var(--dim),var(--gold),#e8c053);width:0%;transition:width .6s cubic-bezier(.25,1,.5,1)}
 .wiz-step-count{position:relative;z-index:2;padding:18px 64px;font-family:'Tenor Sans',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);flex-shrink:0}
-.wiz-stage{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;padding:40px 64px}
-.q-block{display:none;width:100%;max-width:860px;flex-direction:column;align-items:flex-start;opacity:0;pointer-events:none}
-.q-block.active{display:flex;position:relative;pointer-events:all}
+.wiz-stage{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;padding:40px 64px;overflow:hidden}
+.q-block{
+  display:flex;flex-direction:column;align-items:flex-start;
+  width:100%;max-width:860px;
+  position:absolute;top:0;left:0;right:0;
+  opacity:0;pointer-events:none;
+  transform:translateX(60px);
+  transition:transform .42s cubic-bezier(.4,0,.2,1),opacity .42s cubic-bezier(.4,0,.2,1);
+  will-change:transform,opacity;
+}
+.q-block.active{
+  opacity:1;pointer-events:all;
+  transform:translateX(0);
+  position:relative;
+}
 .q-label{font-family:'Tenor Sans',sans-serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
 .q-text{font-family:'Cormorant Garamond',serif;font-size:clamp(28px,4vw,52px);font-weight:300;line-height:1.2;margin-bottom:8px;color:var(--text)}
 .q-text-en{font-family:'Tenor Sans',sans-serif;font-size:14px;color:var(--dim);font-style:italic;margin-bottom:48px;opacity:.7}
@@ -581,13 +593,18 @@ function openWizard(){
   document.body.style.overflow='hidden';
   initParticles('wiz-canvas',25);
   startTime=Date.now();
-  // Reset first question to visible immediately
-  const first=document.getElementById('qb0');
+  // Asegurar primer bloque visible sin transicion
+  document.querySelectorAll('.q-block').forEach((b, i) => {
+    b.classList.remove('active');
+    b.style.cssText = '';
+  });
+  const first = document.getElementById('qb0');
   if(first){
+    first.style.transition = 'none';
     first.classList.add('active');
-    first.style.transform='translateX(0)';
-    first.style.opacity='1';
-    first.style.position='relative';
+    first.style.transform  = 'translateX(0)';
+    first.style.opacity    = '1';
+    first.style.pointerEvents = 'all';
   }
   updateUI();
 }
@@ -601,33 +618,38 @@ function closeWizard(){
   },500);
 }
 function goTo(s){
-  const blocks=document.querySelectorAll('.q-block');
-  const c=blocks[step],n=blocks[s];
-  // Salida del bloque actual
-  c.style.transition='transform .35s ease,opacity .35s ease';
-  c.style.transform=s>step?'translateX(-60px)':'translateX(60px)';
-  c.style.opacity='0';
-  c.style.pointerEvents='none';
-  // Mostrar siguiente y preparar posicion inicial
-  n.classList.add('active');
-  n.style.transition='none';
-  n.style.transform=s>step?'translateX(60px)':'translateX(-60px)';
-  n.style.opacity='0';
-  n.style.pointerEvents='none';
-  n.getBoundingClientRect();
-  // Animar entrada
-  setTimeout(()=>{
-    n.style.transition='transform .35s ease,opacity .35s ease';
-    n.style.transform='translateX(0)';
-    n.style.opacity='1';
-    n.style.pointerEvents='all';
-  },20);
-  // Limpiar anterior una vez animado
-  setTimeout(()=>{
-    c.classList.remove('active','exit');
-    c.style.cssText='';
-  },400);
-  step=s;updateUI();
+  const blocks = document.querySelectorAll('.q-block');
+  const curr = blocks[step];
+  const next = blocks[s];
+  const dir  = s > step ? 1 : -1;
+
+  // Sacar el actual hacia la izquierda/derecha
+  curr.style.transition = 'transform .42s cubic-bezier(.4,0,.2,1), opacity .42s cubic-bezier(.4,0,.2,1)';
+  curr.style.transform  = 'translateX(' + (-dir * 60) + 'px)';
+  curr.style.opacity    = '0';
+  curr.style.pointerEvents = 'none';
+
+  // Colocar el siguiente en el lado correcto sin transición
+  next.style.transition = 'none';
+  next.style.transform  = 'translateX(' + (dir * 60) + 'px)';
+  next.style.opacity    = '0';
+  next.getBoundingClientRect(); // flush
+
+  // Activar y animar entrada
+  next.classList.add('active');
+  next.style.transition = 'transform .42s cubic-bezier(.4,0,.2,1), opacity .42s cubic-bezier(.4,0,.2,1)';
+  next.style.transform  = 'translateX(0)';
+  next.style.opacity    = '1';
+  next.style.pointerEvents = 'all';
+
+  // Limpiar el anterior cuando termine
+  setTimeout(() => {
+    curr.classList.remove('active');
+    curr.style.cssText = '';
+  }, 450);
+
+  step = s;
+  updateUI();
 }
 function updateUI(){
   document.getElementById('wiz-fill').style.width=(step/TOTAL*100)+'%';
